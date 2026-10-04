@@ -1,1 +1,8 @@
-{"name":"Gestão Pessoal","short_name":"Gestão Pessoal","start_url":".","display":"standalone","background_color":"#f3f5f8","theme_color":"#10243d","lang":"pt-BR","icons":[]}
+{"name":"Gestão Pessoal","short_name":"Gestão Pessoal","start_url":".","display":"standalone","background_color":"#f3f5f8","theme_color":"#10243d","lang":"pt-BR","icons": [
+  {
+    "src": "icon.png",
+    "sizes": "512x512",
+    "type": "image/png",
+    "purpose": "any maskable"
+  }
+]
