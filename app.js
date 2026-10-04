@@ -1,28 +1,44 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const KEY='gp_v3_data', PIN='gp_v3_pin', OLD='gp_data', OLD_PIN='gp_pin';
-let data=JSON.parse(localStorage.getItem(KEY)||'null')||JSON.parse(localStorage.getItem(OLD)||'null')||{income:0,cards:[],purchases:[],fixed:[],pix:[],margin:0};
+const KEY='gp_v4_data', PIN='gp_v4_pin', OLD='gp_v3_data', OLD2='gp_data';
+let data=JSON.parse(localStorage.getItem(KEY)||'null')||JSON.parse(localStorage.getItem(OLD)||'null')||JSON.parse(localStorage.getItem(OLD2)||'null')||{income:0,cards:[],purchases:[],fixed:[],pix:[],margin:0};
 data={income:Number(data.income||0),cards:data.cards||[],purchases:data.purchases||[],fixed:data.fixed||[],pix:data.pix||[],margin:Number(data.margin||0)};
-let pin=localStorage.getItem(PIN)||localStorage.getItem(OLD_PIN)||'';
 let currentPage='home', fontSize=localStorage.getItem('gp_font')||'normal', dark=localStorage.getItem('gp_dark')==='1';
 const money=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const save=()=>localStorage.setItem(KEY,JSON.stringify(data));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function applyPrefs(){document.body.classList.toggle('dark',dark);document.body.classList.toggle('font-small',fontSize==='small');document.body.classList.toggle('font-smaller',fontSize==='smaller');$('#themeState').textContent=dark?'Ligado':'Desligado';$('#fontState').textContent=fontSize==='normal'?'Normal':fontSize==='small'?'Pequena':'Muito pequena'}
-function show(id){['lock','setup','recovery','app'].forEach(x=>$('#'+x).classList.add('hidden'));$('#'+id).classList.remove('hidden')}
-function start(){applyPrefs(); if(!pin){show('setup')}else show('lock')}
-function validPin(p){return /^\d{4,8}$/.test(p)}
-function unlock(){show('app');render();go('home')}
-function fail(el,msg){$(el).textContent=msg;setTimeout(()=>$(el).textContent='',2500)}
-$('#createPinBtn').onclick=()=>{let a=$('#newPin').value,b=$('#newPin2').value;if(!validPin(a))return fail('#setupMsg','Use de 4 a 8 números.');if(a!==b)return fail('#setupMsg','Os PINs não conferem.');localStorage.setItem(PIN,a);pin=a;unlock()};
-$('#loginBtn').onclick=()=>{$('#loginPin').value===pin?unlock():fail('#loginMsg','PIN incorreto.')};
-$('#loginPin').onkeydown=e=>{if(e.key==='Enter')$('#loginBtn').click()};
-$('#forgotBtn').onclick=()=>show('recovery');
-$('#backLoginBtn').onclick=()=>show('lock');
-$('#recoverBtn').onclick=()=>{let a=$('#recoverPin').value,b=$('#recoverPin2').value;if(!validPin(a))return fail('#recoverMsg','Use de 4 a 8 números.');if(a!==b)return fail('#recoverMsg','Os PINs não conferem.');localStorage.setItem(PIN,a);pin=a;unlock()};
-$('#lockBtn').onclick=()=>{show('lock');$('#loginPin').value=''};
-$('#logoutBtn').onclick=()=>{show('lock');$('#loginPin').value=''};
-function go(p){currentPage=p;$$('.page').forEach(x=>x.classList.remove('active'));$('#page-'+p).classList.add('active');$$('nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===p));$('#pageTitle').textContent={home:'Início',income:'Receita',cards:'Cartões',purchases:'Compras',fixed:'Despesas fixas',pix:'PIX',margin:'Margem',settings:'Ajustes'}[p]||'Início'}
-$$('nav button').forEach(b=>b.onclick=()=>{go(b.dataset.page);render()});
+function applyPrefs(){document.body.classList.toggle('dark',dark);document.body.classList.toggle('font-small',fontSize==='small');document.body.classList.toggle('font-smaller',fontSize==='smaller');if($('#themeState'))$('#themeState').textContent=dark?'Ligado':'Desligado';if($('#fontState'))$('#fontState').textContent=fontSize==='normal'?'Normal':fontSize==='small'?'Pequena':'Muito pequena'}
+function showPage(p){['lock','setup','recovery'].forEach(x=>document.getElementById(x).classList.add('hidden'));document.getElementById(p).classList.remove('hidden')}
+function validPin(p){return /^\d{4,8}$/.test(String(p||''))}
+function enterApp(){
+  document.getElementById('auth').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  render(); go('home');
+}
+function authMessage(id,msg){const e=document.getElementById(id);e.textContent=msg;setTimeout(()=>e.textContent='',3000)}
+(function initAuth(){
+  const stored=localStorage.getItem(PIN);
+  if(stored && validPin(stored)) showPage('lock'); else showPage('setup');
+
+  document.getElementById('loginBtn').addEventListener('click',()=>{
+    const p=document.getElementById('loginPin').value;
+    if(p===localStorage.getItem(PIN)) enterApp(); else authMessage('loginMsg','PIN incorreto.');
+  });
+  document.getElementById('loginPin').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('loginBtn').click()});
+  document.getElementById('forgotBtn').addEventListener('click',()=>showPage('recovery'));
+  document.getElementById('backLoginBtn').addEventListener('click',()=>showPage('lock'));
+  document.getElementById('createPinBtn').addEventListener('click',()=>{
+    const a=document.getElementById('newPin').value,b=document.getElementById('newPin2').value;
+    if(!validPin(a)) return authMessage('setupMsg','Use de 4 a 8 números.');
+    if(a!==b) return authMessage('setupMsg','Os PINs não conferem.');
+    localStorage.setItem(PIN,a); enterApp();
+  });
+  document.getElementById('recoverBtn').addEventListener('click',()=>{
+    const a=document.getElementById('recoverPin').value,b=document.getElementById('recoverPin2').value;
+    if(!validPin(a)) return authMessage('recoverMsg','Use de 4 a 8 números.');
+    if(a!==b) return authMessage('recoverMsg','Os PINs não conferem.');
+    localStorage.setItem(PIN,a); document.getElementById('recoverPin').value=''; document.getElementById('recoverPin2').value=''; enterApp();
+  });
+})();
 function render(){
 applyPrefs();
 $('#incomeView').textContent=money(data.income);
@@ -57,7 +73,7 @@ $('#saveMargin').onclick=()=>{data.margin=Number($('#marginInput').value||0);sav
 window.del=(arr,i)=>{if(confirm('Excluir este lançamento?')){data[arr].splice(i,1);save();render()}};
 $('#themeBtn').onclick=()=>{dark=!dark;localStorage.setItem('gp_dark',dark?'1':'0');render()};
 $('#fontBtn').onclick=()=>{fontSize=fontSize==='normal'?'small':fontSize==='small'?'smaller':'normal';localStorage.setItem('gp_font',fontSize);render()};
-$('#changePinBtn').onclick=()=>{let old=prompt('PIN atual:');if(old!==pin)return alert('PIN atual incorreto.');let n=prompt('Novo PIN (4 a 8 números):');if(!validPin(n))return alert('PIN inválido.');localStorage.setItem(PIN,n);pin=n;alert('PIN alterado.')};
+$('#changePinBtn').onclick=()=>{let old=prompt('PIN atual:');if(old!==localStorage.getItem(PIN))return alert('PIN atual incorreto.');let n=prompt('Novo PIN (4 a 8 números):');if(!validPin(n))return alert('PIN inválido.');localStorage.setItem(PIN,n);alert('PIN alterado.')};
 $('#exportBtn').onclick=()=>{let blob=new Blob([JSON.stringify({version:3,data,pin},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='gestao-pessoal-backup.json';a.click();URL.revokeObjectURL(a.href)};
 $('#importFile').onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let o=JSON.parse(r.result);if(!o.data)throw 0;data=o.data;if(o.pin){pin=o.pin;localStorage.setItem(PIN,pin)}save();render();alert('Backup restaurado com sucesso.')}catch(_){alert('Arquivo de backup inválido.')}};r.readAsText(f)};
-start();
+applyPrefs();

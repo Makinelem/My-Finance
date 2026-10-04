@@ -9,14 +9,15 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="auth">
 <div id="lock" class="screen">
   <div class="lock-card">
     <div class="logo">GP</div>
     <h1>Gestão Pessoal</h1>
-    <p id="lockText">Digite seu PIN para entrar.</p>
-    <input id="loginPin" class="pin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN">
-    <button id="loginBtn" class="primary">Entrar</button>
-    <button id="forgotBtn" class="link-btn">Esqueci meu PIN</button>
+    <p>Digite seu PIN para entrar.</p>
+    <input id="loginPin" class="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="PIN">
+    <button id="loginBtn" class="primary" type="button">Entrar</button>
+    <button id="forgotBtn" class="link-btn" type="button">Esqueci meu PIN</button>
     <div id="loginMsg" class="msg"></div>
   </div>
 </div>
@@ -26,9 +27,9 @@
     <div class="logo">GP</div>
     <h1>Primeiro acesso</h1>
     <p>Crie um PIN de 4 a 8 números.</p>
-    <input id="newPin" class="pin" type="password" inputmode="numeric" maxlength="8" placeholder="Novo PIN">
-    <input id="newPin2" class="pin" type="password" inputmode="numeric" maxlength="8" placeholder="Confirme o PIN">
-    <button id="createPinBtn" class="primary">Criar PIN</button>
+    <input id="newPin" class="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password" placeholder="Novo PIN">
+    <input id="newPin2" class="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password" placeholder="Confirme o PIN">
+    <button id="createPinBtn" class="primary" type="button">Criar PIN</button>
     <div id="setupMsg" class="msg"></div>
   </div>
 </div>
@@ -36,14 +37,15 @@
 <div id="recovery" class="screen hidden">
   <div class="lock-card">
     <div class="logo">GP</div>
-    <h1>Recuperar acesso</h1>
-    <p>Crie um novo PIN. Seus dados financeiros serão mantidos.</p>
-    <input id="recoverPin" class="pin" type="password" inputmode="numeric" maxlength="8" placeholder="Novo PIN">
-    <input id="recoverPin2" class="pin" type="password" inputmode="numeric" maxlength="8" placeholder="Confirme o PIN">
-    <button id="recoverBtn" class="primary">Redefinir PIN</button>
-    <button id="backLoginBtn" class="link-btn">Voltar</button>
+    <h1>Redefinir PIN</h1>
+    <p>Isso <b>não apaga seus dados financeiros</b>. Apenas cria um novo PIN.</p>
+    <input id="recoverPin" class="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password" placeholder="Novo PIN">
+    <input id="recoverPin2" class="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password" placeholder="Confirme o PIN">
+    <button id="recoverBtn" class="primary" type="button">Criar novo PIN</button>
+    <button id="backLoginBtn" class="link-btn" type="button">Voltar</button>
     <div id="recoverMsg" class="msg"></div>
   </div>
+</div>
 </div>
 
 <div id="app" class="hidden">
