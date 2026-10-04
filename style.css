@@ -9,3 +9,13 @@ main{padding:16px;max-width:600px;margin:auto}.page{display:none}.page.active{di
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);height:70px;display:grid;grid-template-columns:repeat(5,1fr);z-index:10;padding-bottom:env(safe-area-inset-bottom)}.bottom-nav button{font-size:19px;color:#8290a2}.bottom-nav button.active{color:var(--accent)}.bottom-nav span{display:block;font-size:10px;margin-top:3px}
 .modal{position:fixed;inset:0;background:#0008;display:grid;align-items:end;z-index:20}.modal-box{background:#fff;border-radius:24px 24px 0 0;padding:22px 18px 30px;max-height:90vh;overflow:auto;position:relative}.close{position:absolute;right:15px;top:10px;font-size:28px;color:var(--muted)}.modal-box h2{margin:0 35px 18px}.form{display:grid;gap:10px}.form label{font-size:12px;color:var(--muted)}.form input,.form select{width:100%;padding:13px;border:1px solid var(--line);border-radius:12px;background:#fff}.form button{padding:14px;border-radius:12px;background:var(--primary);color:#fff;font-weight:700}.actions{display:flex;gap:8px;margin-top:10px}.actions button{flex:1;padding:10px;border-radius:10px;background:#eef3f8}.actions .del{color:var(--danger)}
 @media(min-width:700px){body{background:#e8edf3}#app{max-width:600px;margin:auto;background:var(--bg);min-height:100vh}.modal{align-items:center}.modal-box{width:min(500px,92vw);border-radius:22px}}
+
+body.dark{--bg:#10151c;--card:#18212b;--ink:#edf3f8;--muted:#9aa8b7;--line:#2a3643;background:#10151c}
+body.dark .bottom-nav,body.dark .topbar{background:#151e28}
+body.dark .modal-box,body.dark .lock-card{background:#18212b;color:var(--ink)}
+body.dark .form input,body.dark .form select{background:#111820;color:var(--ink);border-color:#334150}
+body.font-small{font-size:90%}
+body.font-smaller{font-size:82%}
+.bottom-nav{overflow-x:auto;grid-template-columns:repeat(7,minmax(72px,1fr));justify-content:start}
+.scroll-nav button{min-width:72px}
+.value button{display:block;color:var(--accent);font-size:11px;margin-top:5px}

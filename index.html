@@ -51,6 +51,10 @@
     <div class="stat"><span>Fixos</span><b id="fixedTotal">R$ 0,00</b></div>
     <div class="stat"><span>Cartões</span><b id="cardTotal">R$ 0,00</b></div>
   </div>
+  <div class="grid2">
+    <div class="stat"><span>PIX no mês</span><b id="pixTotal">R$ 0,00</b></div>
+    <div class="stat"><span>Margem</span><b id="dashMargin">R$ 0,00</b></div>
+  </div>
   <div class="section-head"><h2>Cartões</h2><button data-page="cards">Ver todos</button></div>
   <div id="cardSummary" class="stack"></div>
   <div class="section-head"><h2>Próximos compromissos</h2></div>
@@ -67,26 +71,45 @@
   <div id="purchasesList" class="stack"></div>
 </section>
 
+<section id="pix" class="page">
+  <div class="section-head"><h2>Compras no PIX</h2><button id="addPix">＋</button></div>
+  <p class="muted">Compras pagas diretamente pelo PIX, sem passar pelos cartões.</p>
+  <div id="pixList" class="stack"></div>
+</section>
+
 <section id="fixed" class="page">
   <div class="section-head"><h2>Despesas fixas</h2><button id="addFixed">＋</button></div>
   <p class="muted">Valores mensais recorrentes. Não possuem parcelas.</p>
   <div id="fixedList" class="stack"></div>
 </section>
 
+<section id="margin" class="page">
+  <h2>Minha margem</h2>
+  <p class="muted">Valor que você deseja manter livre após os compromissos mensais.</p>
+  <div class="item">
+    <div><div class="title">Margem desejada</div><div class="sub">Reserva mensal</div></div>
+    <div class="value"><span id="marginValue">R$ 0,00</span><button onclick="editMargin()">Editar</button></div>
+  </div>
+</section>
+
 <section id="settings" class="page">
   <h2>Ajustes</h2>
   <div class="menu-card">
     <button id="changePin">🔐 Alterar PIN <span>›</span></button>
+    <button id="toggleTheme">🌙 Tema escuro <span id="themeStatus">Desligado</span></button>
+    <button id="fontSize">🔤 Tamanho da fonte <span id="fontStatus">Normal</span></button>
     <button id="clearData">⚠️ Apagar todos os dados <span>›</span></button>
   </div>
 </section>
 </main>
 
-<nav class="bottom-nav">
+<nav class="bottom-nav scroll-nav">
  <button data-page="dashboard">⌂<span>Início</span></button>
  <button data-page="cards">▣<span>Cartões</span></button>
  <button data-page="purchases">🛒<span>Compras</span></button>
  <button data-page="fixed">↻<span>Fixos</span></button>
+ <button data-page="pix">₿<span>PIX</span></button>
+ <button data-page="margin">▤<span>Margem</span></button>
  <button data-page="settings">⚙<span>Ajustes</span></button>
 </nav>
 </div>

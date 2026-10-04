@@ -2,7 +2,8 @@ const $=s=>document.querySelector(s);
 const money=v=>Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const monthKey=()=>{let d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`};
 const monthName=()=>new Date().toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
-let data=JSON.parse(localStorage.getItem("gp_data")||'{"income":0,"cards":[],"purchases":[],"fixed":[]}');
+let data=JSON.parse(localStorage.getItem("gp_data")||'{"income":0,"cards":[],"purchases":[],"fixed":[],"pix":[],"margin":0}');
+data.pix=data.pix||[]; data.margin=Number(data.margin||0);
 const save=()=>localStorage.setItem("gp_data",JSON.stringify(data));
 $("#monthTitle").textContent=monthName();
 
@@ -20,14 +21,16 @@ function cardUsed(cardId){
 function render(){
  const fixed=data.fixed.reduce((s,x)=>s+Number(x.value||0),0);
  const card=data.cards.reduce((s,x)=>s+cardUsed(x.id),0);
- const committed=fixed+card;
- $("#fixedTotal").textContent=money(fixed);$("#cardTotal").textContent=money(card);
+ const pix=data.pix.reduce((s,x)=>s+Number(x.value||0),0);
+ const committed=fixed+card+pix;
+ $("#fixedTotal").textContent=money(fixed);$("#cardTotal").textContent=money(card);$("#pixTotal").textContent=money(pix);$("#dashMargin").textContent=money(data.margin);$("#marginValue").textContent=money(data.margin);
  $("#incomeTotal").textContent=money(data.income);$("#committedTotal").textContent=money(committed);
  $("#available").textContent=money(Number(data.income)-committed);
  $("#cardSummary").innerHTML=data.cards.length?data.cards.slice(0,3).map(c=>cardHTML(c)).join(""):`<div class="item"><div><b>Nenhum cartão cadastrado</b><div class="sub">Cadastre seu primeiro cartão.</div></div></div>`;
  $("#cardsList").innerHTML=data.cards.length?data.cards.map(c=>cardHTML(c,true)).join(""):`<div class="item">Nenhum cartão cadastrado.</div>`;
  $("#purchasesList").innerHTML=data.purchases.length?data.purchases.slice().reverse().map(p=>purchaseHTML(p)).join(""):`<div class="item">Nenhuma compra lançada.</div>`;
  $("#fixedList").innerHTML=data.fixed.length?data.fixed.map(f=>fixedHTML(f)).join(""):`<div class="item">Nenhuma despesa fixa cadastrada.</div>`;
+ $("#pixList").innerHTML=data.pix.length?data.pix.slice().reverse().map(p=>pixHTML(p)).join(""):`<div class="item">Nenhuma compra no PIX cadastrada.</div>`;
  const ups=[...data.fixed.map(f=>({title:f.name,sub:"Despesa fixa • dia "+f.day,value:f.value})),...data.purchases.slice(0,8).map(p=>({title:p.name,sub:`Compra • ${p.installments}x`,value:Number(p.total)/Number(p.installments)}))];
  $("#upcoming").innerHTML=ups.length?ups.slice(0,5).map(x=>`<div class="item"><div><div class="title">${esc(x.title)}</div><div class="sub">${esc(x.sub)}</div></div><div class="value">${money(x.value)}</div></div>`).join(""):`<div class="item">Nenhum compromisso cadastrado.</div>`;
 }
@@ -53,6 +56,19 @@ function fixedForm(f=null){openModal(f?"Editar despesa fixa":"Nova despesa fixa"
 window.saveFixed=id=>{let x={id:id||crypto.randomUUID(),name:$("#xName").value.trim(),value:Number($("#xValue").value),day:Number($("#xDay").value)};if(!x.name||!x.value)return alert("Informe nome e valor.");let i=data.fixed.findIndex(f=>f.id===id);i>=0?data.fixed[i]=x:data.fixed.push(x);save();$("#modal").classList.add("hidden");render()};
 window.editFixed=id=>fixedForm(data.fixed.find(f=>f.id===id));window.delFixed=id=>{if(confirm("Excluir esta despesa?")){data.fixed=data.fixed.filter(f=>f.id!==id);save();render()}};
 
+
+function pixHTML(p){return `<div class="item"><div><div class="title">PIX • ${esc(p.name)}</div><div class="sub">${p.date}</div></div><div class="value">${money(p.value)}<div class="actions"><button onclick="editPix('${p.id}')">Editar</button><button class="del" onclick="delPix('${p.id}')">Excluir</button></div></div></div>`}
+$("#addPix").onclick=()=>pixForm();
+function pixForm(p=null){openModal(p?"Editar compra PIX":"Nova compra PIX",`<div class="form"><label>Descrição</label><input id="zName" value="${p?esc(p.name):""}" placeholder="Ex.: Farmácia"><label>Data</label><input id="zDate" type="date" value="${p?.date||new Date().toISOString().slice(0,10)}"><label>Valor</label><input id="zValue" type="number" step="0.01" value="${p?p.value:""}"><button onclick="savePix('${p?.id||""}')">Salvar</button></div>`)}
+window.savePix=id=>{let x={id:id||crypto.randomUUID(),name:$("#zName").value.trim(),date:$("#zDate").value,value:Number($("#zValue").value)};if(!x.name||!x.value)return alert("Informe descrição e valor.");let i=data.pix.findIndex(p=>p.id===id);i>=0?data.pix[i]=x:data.pix.push(x);save();$("#modal").classList.add("hidden");render()}
+window.editPix=id=>pixForm(data.pix.find(p=>p.id===id));window.delPix=id=>{if(confirm("Excluir esta compra PIX?")){data.pix=data.pix.filter(p=>p.id!==id);save();render()}}
+window.editMargin=()=>{let v=prompt("Informe sua margem desejada (R$):",data.margin);if(v!==null&&!isNaN(v)&&Number(v)>=0){data.margin=Number(v);save();render()}}
+$("#toggleTheme").onclick=()=>{document.body.classList.toggle("dark");let on=document.body.classList.contains("dark");localStorage.setItem("gp_theme",on?"dark":"light");$("#themeStatus").textContent=on?"Ligado":"Desligado"}
+let fontModes=["","font-small","font-smaller"],fi=Number(localStorage.getItem("gp_font")||0);
+document.body.classList.add(fontModes[fi]);$("#fontStatus").textContent=["Normal","Pequena","Muito pequena"][fi];
+$("#fontSize").onclick=()=>{fi=(fi+1)%3;document.body.classList.remove("font-small","font-smaller");if(fontModes[fi])document.body.classList.add(fontModes[fi]);localStorage.setItem("gp_font",fi);$("#fontStatus").textContent=["Normal","Pequena","Muito pequena"][fi]};
+if(localStorage.getItem("gp_theme")==="dark"){document.body.classList.add("dark");$("#themeStatus").textContent="Ligado"}
+
 function unlock(){localStorage.setItem("gp_unlocked","1");$("#lock").classList.add("hidden");$("#setup").classList.add("hidden");$("#app").classList.remove("hidden");render()}
 const storedPin=localStorage.getItem("gp_pin");
 if(!storedPin){$("#lock").classList.add("hidden");$("#setup").classList.remove("hidden")}
@@ -61,5 +77,5 @@ $("#pin").onkeydown=e=>{if(e.key==="Enter")$("#enterBtn").click()};
 $("#savePin").onclick=()=>{let a=$("#newPin").value,b=$("#newPin2").value;if(!/^\d{4,6}$/.test(a)||a!==b)return $("#setupMsg").textContent="Use 4 a 6 números iguais nos dois campos.";localStorage.setItem("gp_pin",a);unlock()};
 $("#logout").onclick=()=>{localStorage.removeItem("gp_unlocked");location.reload()};
 $("#changePin").onclick=()=>{let p=prompt("Novo PIN (4 a 6 números):");if(p&&/^\d{4,6}$/.test(p)){localStorage.setItem("gp_pin",p);alert("PIN alterado.")}else if(p)alert("PIN inválido.")};
-$("#clearData").onclick=()=>{if(confirm("Apagar cartões, compras, despesas e receitas?")){data={income:0,cards:[],purchases:[],fixed:[]};save();render()}};
+$("#clearData").onclick=()=>{if(confirm("Apagar cartões, compras, despesas e receitas?")){data={income:0,cards:[],purchases:[],fixed:[],pix:[],margin:0};save();render()}};
 if(localStorage.getItem("gp_unlocked")==="1")unlock();
