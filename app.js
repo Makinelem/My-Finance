@@ -191,12 +191,26 @@ $("#pin").onkeydown=e=>{if(e.key==="Enter")$("#enterBtn").click()};
 $("#savePin").onclick=()=>{let a=$("#newPin").value,b=$("#newPin2").value;if(!/^\d{4,6}$/.test(a)||a!==b)return $("#setupMsg").textContent="Use 4 a 6 números iguais nos dois campos.";localStorage.setItem("gp_pin",a);unlock()};
 $("#logout").onclick=()=>{localStorage.removeItem("gp_unlocked");location.reload()};
 $("#setCurrentAmount").onclick=()=>openValueSettings();
+function parseMoneyInput(value){
+ const raw=String(value??"").trim().replace(/\s/g,"");
+ if(!raw)return 0;
+ const normalized=raw.includes(",") ? raw.replace(/\./g,"").replace(",",".") : raw;
+ return Number(normalized);
+}
+function moneyInputAttrs(value){
+ return `inputmode="decimal" autocomplete="off" value="${value??""}"`;
+}
+function formatMoneyInput(value){
+ const n=Number(value||0);
+ if(!n)return "";
+ return n.toLocaleString("pt-BR",{minimumFractionDigits:0,maximumFractionDigits:2});
+}
 function openValueSettings(){
  const month=monthName();
  const currentExtra=extrasForMonth(monthKey());
  openModal("Valor que tenho",`<div class="form">
    <label>Salário / valor recorrente mensal</label>
-   <input id="salaryValue" type="number" step="0.01" value="${salaryValue().toFixed(2)}" placeholder="1500">
+   <input id="salaryValue" type="text" inputmode="decimal" autocomplete="off" value="${formatMoneyInput(salaryValue())}" placeholder="1500,00">
    <button onclick="saveSalary()">Salvar salário recorrente</button>
    <div class="value-summary"><b>${esc(month)}</b><span>Extras acumulados: ${money(currentExtra)}</span><span>Parcelas de cartão: ${money(currentMonthCardCommitment())}</span><strong>Disponível antes dos fixos: ${money(effectiveAmountForMonth(monthKey()))}</strong></div>
    <button class="secondary-action" onclick="openExtraForm()">＋ Adicionar extra deste mês</button>
@@ -204,7 +218,7 @@ function openValueSettings(){
  </div>`);
 }
 window.saveSalary=()=>{
- const v=Number(String($("#salaryValue").value||"").replace(",","."));
+ const v=parseMoneyInput($("#salaryValue").value);
  if(!Number.isFinite(v)||v<0)return alert("Informe um salário válido.");
  data.salary=v;
  data.currentAmount=v;
@@ -234,7 +248,7 @@ function openExtraForm(x=null){
     <option value="12" ${x?.installments==12?"selected":""}>12 parcelas</option>
    </select>
   </div>
-  <label>Valor</label><input id="eValue" type="number" step="0.01" value="${x?x.value:""}" placeholder="500">
+  <label>Valor</label><input id="eValue" type="text" inputmode="decimal" autocomplete="off" value="${x?formatMoneyInput(x.value):""}" placeholder="500,00">
   <button onclick="saveExtra('${x?.id||""}')">Salvar extra</button>
  </div>`);
  const method=$("#eMethod"), fields=$("#eCreditFields");
@@ -243,7 +257,7 @@ function openExtraForm(x=null){
 }
 window.saveExtra=id=>{
  const method=$("#eMethod").value;
- const x={id:id||crypto.randomUUID(),source:$("#eSource").value.trim(),date:$("#eDate").value,method,value:Number($("#eValue").value),installments:method==="credito"?Number($("#eInst").value||1):1};
+ const x={id:id||crypto.randomUUID(),source:$("#eSource").value.trim(),date:$("#eDate").value,method,value:parseMoneyInput($("#eValue").value),installments:method==="credito"?Number($("#eInst").value||1):1};
  if(!x.source||!x.date||!Number.isFinite(x.value)||x.value<=0)return alert("Preencha fonte, data e valor.");
  const i=data.extras.findIndex(e=>e.id===id);
  i>=0?data.extras[i]=x:data.extras.push(x);
@@ -251,13 +265,14 @@ window.saveExtra=id=>{
 };
 window.editExtra=id=>openExtraForm(data.extras.find(x=>x.id===id));
 window.delExtra=id=>{if(confirm("Excluir este extra?")){data.extras=data.extras.filter(x=>x.id!==id);save();render();openExtrasHistory()}};
-function openExtrasHistory(){
+window.openExtrasHistory=function openExtrasHistory(){
  const list=data.extras.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
  openModal("Histórico dos extras",`<div class="extra-history">
    ${list.length?list.map(extraHTML).join(""):`<div class="item">Nenhum extra cadastrado.</div>`}
  </div>`);
 }
-$("#extraHistory").onclick=openExtrasHistory;
+$("#extraAdd").onclick=()=>openExtraForm();
+$("#extraHistory").onclick=()=>window.openExtrasHistory();
 
 function applyPreferences(){
  document.body.classList.toggle("theme-dark",prefs.theme==="dark");
