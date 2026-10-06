@@ -26,3 +26,6 @@ body.font-small .balance-card strong{font-size:29px}
 body.font-large .balance-card strong{font-size:35px}
 #cardFields,#installmentFields{display:block}
 #cardFields.hidden,#installmentFields.hidden{display:none!important}
+
+.value-summary{display:grid;gap:7px;padding:14px;background:var(--bg);border:1px solid var(--line);border-radius:14px;margin-top:4px}.value-summary span{font-size:13px;color:var(--muted)}.value-summary strong{font-size:15px;margin-top:3px}.secondary-action{background:var(--accent)!important;color:#fff!important}
+.extra-history{display:grid;gap:9px}.extra-history .item{align-items:flex-start}.extra-history .actions{justify-content:flex-end}.extra-history .actions button{flex:0 0 auto}
