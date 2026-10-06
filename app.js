@@ -328,7 +328,8 @@ window.editExtra=id=>openExtraForm(data.extras.find(x=>x.id===id));
 window.delExtra=id=>{if(confirm("Excluir este extra?")&&requireEditPassword()){data.extras=data.extras.filter(x=>x.id!==id);save();render();openExtrasHistory()}};
 window.openExtrasHistory=function openExtrasHistory(){
  const list=data.extras.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
- openModal("Histórico dos extras",`<div class="extra-history">
+ const total=data.extras.reduce((sum,x)=>sum+(Number(x.value)||0),0);
+ openModal("Histórico dos extras",`<div class="extra-history-head"><span>Total dos extras</span><strong>${money(total)}</strong></div><div class="extra-history">
    ${list.length?list.map(extraHTML).join(""):`<div class="item">Nenhum extra cadastrado.</div>`}
  </div>`);
 }
