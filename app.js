@@ -76,8 +76,11 @@ function currentMonthFixed(){return data.fixed.reduce((s,x)=>s+Number(x.value||0
 function effectiveAmountForMonth(targetMonth){
  return salaryValue()-cardInstallmentsForMonth(targetMonth);
 }
+function totalExtras(){
+ return data.extras.reduce((s,x)=>s+Number(x.value||0),0);
+}
 function valueIHaveForMonth(targetMonth){
- return salaryValue()+extrasForMonth(targetMonth)-cardInstallmentsForMonth(targetMonth);
+ return salaryValue()+totalExtras()-cardInstallmentsForMonth(targetMonth);
 }
 function extraMethodLabel(x){
  if(x.method==="pix")return "Pix";
@@ -92,7 +95,7 @@ function render(){
  const fixed=currentMonthFixed();
  const card=cardInstallmentsForMonth(month);
  const cash=currentMonthCash();
- const extra=extrasForMonth(month);
+ const extra=totalExtras();
  const base=salaryValue();
  const amount=base+extra-card;
  const availableBase=base-card;
@@ -179,7 +182,7 @@ function requireClearPassword(){const p=prompt("Senha para apagar todos os dados
 
 $("#addCard").onclick=()=>cardForm();
 function cardForm(c=null){openModal(c?"Editar cartão":"Novo cartão",`<div class="form"><label>Nome do cartão</label><input id="fName" value="${c?esc(c.name):""}" placeholder="Ex.: Nubank"><label>Limite total</label><input id="fLimit" type="number" step="0.01" value="${c?c.limit:""}" placeholder="5000"><label>Dia de fechamento</label><input id="fClose" type="number" min="1" max="31" value="${c?c.close:""}"><label>Dia de vencimento</label><input id="fDue" type="number" min="1" max="31" value="${c?c.due:""}"><button onclick="saveCard('${c?.id||""}')">Salvar</button></div>`)}
-window.saveCard=id=>{if(!requireEditPassword())return;let x={id:id||crypto.randomUUID(),name:$("#fName").value.trim(),limit:Number($("#fLimit").value),close:Number($("#fClose").value),due:Number($("#fDue").value)};if(!x.name||!x.limit)return alert("Informe nome e limite.");let i=data.cards.findIndex(c=>c.id===id);i>=0?data.cards[i]=x:data.cards.push(x);save();$("#modal").classList.add("hidden");render()};
+window.saveCard=id=>{if(id&&!requireEditPassword())return;let x={id:id||crypto.randomUUID(),name:$("#fName").value.trim(),limit:Number($("#fLimit").value),close:Number($("#fClose").value),due:Number($("#fDue").value)};if(!x.name||!x.limit)return alert("Informe nome e limite.");let i=data.cards.findIndex(c=>c.id===id);i>=0?data.cards[i]=x:data.cards.push(x);save();$("#modal").classList.add("hidden");render()};
 window.editCard=id=>cardForm(data.cards.find(c=>c.id===id));window.delCard=id=>{if(confirm("Excluir este cartão?")&&requireEditPassword()){data.cards=data.cards.filter(c=>c.id!==id);save();render()}};
 
 $("#addPurchase").onclick=()=>purchaseForm();
@@ -221,7 +224,7 @@ function purchaseForm(p=null){
  updatePaymentFields();
 } 
 window.savePurchase=id=>{
- if(!requireEditPassword())return;
+ if(id&&!requireEditPassword())return;
  let method=$("#pMethod").value;
  let isCard=method==="cartao";
  if(isCard&&!data.cards.length)return alert("Cadastre um cartão primeiro.");
@@ -235,7 +238,7 @@ window.editPurchase=id=>purchaseForm(data.purchases.find(p=>p.id===id));
 window.delPurchase=id=>{if(confirm("Excluir esta compra?")&&requireEditPassword()){data.purchases=data.purchases.filter(p=>p.id!==id);save();render()}};
 $("#addFixed").onclick=()=>fixedForm();
 function fixedForm(f=null){openModal(f?"Editar despesa fixa":"Nova despesa fixa",`<div class="form"><label>Nome</label><input id="xName" value="${f?esc(f.name):""}" placeholder="Ex.: Internet"><label>Valor mensal</label><input id="xValue" type="number" step="0.01" value="${f?f.value:""}"><label>Dia do vencimento</label><input id="xDay" type="number" min="1" max="31" value="${f?f.day:""}"><button onclick="saveFixed('${f?.id||""}')">Salvar</button></div>`)}
-window.saveFixed=id=>{if(!requireEditPassword())return;let x={id:id||crypto.randomUUID(),name:$("#xName").value.trim(),value:Number($("#xValue").value),day:Number($("#xDay").value)};if(!x.name||!x.value)return alert("Informe nome e valor.");let i=data.fixed.findIndex(f=>f.id===id);i>=0?data.fixed[i]=x:data.fixed.push(x);save();$("#modal").classList.add("hidden");render()};
+window.saveFixed=id=>{if(id&&!requireEditPassword())return;let x={id:id||crypto.randomUUID(),name:$("#xName").value.trim(),value:Number($("#xValue").value),day:Number($("#xDay").value)};if(!x.name||!x.value)return alert("Informe nome e valor.");let i=data.fixed.findIndex(f=>f.id===id);i>=0?data.fixed[i]=x:data.fixed.push(x);save();$("#modal").classList.add("hidden");render()};
 window.editFixed=id=>fixedForm(data.fixed.find(f=>f.id===id));window.delFixed=id=>{if(confirm("Excluir esta despesa?")&&requireEditPassword()){data.fixed=data.fixed.filter(f=>f.id!==id);save();render()}};
 
 function unlock(){localStorage.setItem("gp_unlocked","1");$("#lock").classList.add("hidden");$("#setup").classList.add("hidden");$("#app").classList.remove("hidden");render()}
@@ -273,7 +276,8 @@ function openValueSettings(){
  </div>`);
 }
 window.saveSalary=()=>{
- if(!requireEditPassword())return;
+ const old=salaryValue();
+ if(old!==0&&!requireEditPassword())return;
  const v=parseMoneyInput($("#salaryValue").value);
  if(!Number.isFinite(v)||v<0)return alert("Informe um salário válido.");
  data.salary=v;
@@ -312,7 +316,7 @@ function openExtraForm(x=null){
  method.onchange=update;update();
 }
 window.saveExtra=id=>{
- if(!requireEditPassword())return;
+ if(id&&!requireEditPassword())return;
  const method=$("#eMethod").value;
  const x={id:id||crypto.randomUUID(),source:$("#eSource").value.trim(),date:$("#eDate").value,method,value:parseMoneyInput($("#eValue").value),installments:method==="credito"?Number($("#eInst").value||1):1};
  if(!x.source||!x.date||!Number.isFinite(x.value)||x.value<=0)return alert("Preencha fonte, data e valor.");
@@ -347,7 +351,7 @@ $("#fontSize").onclick=()=>{
 
 $("#changePin").onclick=()=>{const old=prompt("PIN atual:");if(old!==localStorage.getItem("gp_pin")){alert("PIN atual incorreto.");return}const p=prompt("Novo PIN (4 a 6 números):");const p2=prompt("Confirme o novo PIN:");if(!p||!/^\d{4,6}$/.test(p)||p!==p2){alert("PIN inválido ou confirmação diferente.");return}localStorage.setItem("gp_pin",p);alert("PIN alterado.")};
 $("#changePasswords").onclick=()=>openPasswordSettings();
-function openPasswordSettings(){openModal("Alterar senhas",`<div class="form"><p class="muted">Escolha qual senha deseja alterar. A confirmação da troca será feita pelo PIN.</p><label>Senha</label><select id="passwordTarget"><option value="edit">Edição (alterar dados)</option><option value="clear">Limpeza (apagar todos os dados)</option></select><label>Senha atual</label><input id="oldTargetPass" type="password"><label>Nova senha</label><input id="newTargetPass" type="password"><label>Confirmar nova senha</label><input id="newTargetPass2" type="password"><button onclick="savePasswords()">Salvar alteração</button></div>`)}
+function openPasswordSettings(){openModal("Alterar senhas",`<div class="form"><p class="muted">Escolha qual senha deseja alterar. A confirmação da troca será feita pelo PIN.</p><label>Senha</label><select id="passwordTarget"><option value="edit">Edição</option><option value="clear">Limpeza</option></select><label>Senha atual</label><input id="oldTargetPass" type="password"><label>Nova senha</label><input id="newTargetPass" type="password"><label>Confirmar nova senha</label><input id="newTargetPass2" type="password"><button onclick="savePasswords()">Salvar alteração</button></div>`)}
 window.savePasswords=()=>{if(prompt("Informe o PIN para confirmar a troca da senha:")!==localStorage.getItem("gp_pin")){alert("PIN incorreto.");return}const target=$("#passwordTarget").value,old=$("#oldTargetPass").value,n=$("#newTargetPass").value,n2=$("#newTargetPass2").value;const key=target==="edit"?"gp_edit_password":"gp_clear_password";if(old!==localStorage.getItem(key)){alert("Senha atual incorreta.");return}if(!n||n!==n2){alert("A nova senha e a confirmação não conferem.");return}localStorage.setItem(key,n);$("#modal").classList.add("hidden");alert("Senha alterada com sucesso.")};
 $("#clearData").onclick=()=>{if(!confirm("Apagar todos os dados?"))return;if(!requireClearPassword())return;data={income:0,currentAmount:0,salary:0,cards:[],purchases:[],fixed:[],extras:[],paid:{}};save();render()};
 $("#cardSort").onchange=renderCardsList;
