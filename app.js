@@ -9,6 +9,9 @@ if(!Array.isArray(data.cards))data.cards=[];
 if(!Array.isArray(data.purchases))data.purchases=[];
 if(!Array.isArray(data.fixed))data.fixed=[];
 if(!Array.isArray(data.extras))data.extras=[];
+if(!data.paid) data.paid={};
+if(!localStorage.getItem("gp_edit_password")) localStorage.setItem("gp_edit_password","Biamar10");
+if(!localStorage.getItem("gp_clear_password")) localStorage.setItem("gp_clear_password","Biankh@10");
 
 const prefs=JSON.parse(localStorage.getItem("gp_prefs")||'{"theme":"light","fontSize":"normal"}');
 const save=()=>localStorage.setItem("gp_data",JSON.stringify(data));
@@ -71,6 +74,9 @@ function currentMonthCash(){
 }
 function currentMonthFixed(){return data.fixed.reduce((s,x)=>s+Number(x.value||0),0);}
 function effectiveAmountForMonth(targetMonth){
+ return salaryValue()-cardInstallmentsForMonth(targetMonth);
+}
+function valueIHaveForMonth(targetMonth){
  return salaryValue()+extrasForMonth(targetMonth)-cardInstallmentsForMonth(targetMonth);
 }
 function extraMethodLabel(x){
@@ -89,6 +95,7 @@ function render(){
  const extra=extrasForMonth(month);
  const base=salaryValue();
  const amount=base+extra-card;
+ const availableBase=base-card;
  const committed=fixed+card+cash;
  $("#currentAmount").textContent=money(amount);
  $("#currentAmountSetting").textContent=money(base);
@@ -97,18 +104,62 @@ function render(){
  $("#cashTotal").textContent=money(cash);
  $("#incomeTotal").textContent=money(extra);
  $("#committedTotal").textContent=money(committed);
- $("#available").textContent=money(amount-fixed-cash);
+ $("#available").textContent=money(availableBase-fixed-cash);
  $("#cardSummary").innerHTML=data.cards.length?data.cards.slice(0,3).map(c=>cardHTML(c)).join(""):`<div class="item"><div><b>Nenhum cartão cadastrado</b><div class="sub">Cadastre seu primeiro cartão.</div></div></div>`;
- $("#cardsList").innerHTML=data.cards.length?data.cards.map(c=>cardHTML(c,true)).join(""):`<div class="item">Nenhum cartão cadastrado.</div>`;
+ renderCardsList();
  $("#purchasesList").innerHTML=data.purchases.length?data.purchases.slice().reverse().map(p=>purchaseHTML(p)).join(""):`<div class="item">Nenhuma compra lançada.</div>`;
  $("#fixedList").innerHTML=data.fixed.length?data.fixed.map(f=>fixedHTML(f)).join(""):`<div class="item">Nenhuma despesa fixa cadastrada.</div>`;
- const ups=[
-   ...data.fixed.map(f=>({title:f.name,sub:"Despesa fixa • dia "+f.day,value:f.value})),
-   ...data.purchases.filter(p=>monthKeyFromDate(p.date)===month).slice(0,8).map(p=>({title:p.name,sub:`${methodLabel(p.method)} • ${p.installments||1}x`,value:Number(p.total)/Number(p.installments||1)})),
-   ...data.extras.filter(x=>monthKeyFromDate(x.date)===month).map(x=>({title:x.source,sub:`Extra • ${extraMethodLabel(x)}`,value:x.value}))
- ];
- $("#upcoming").innerHTML=ups.length?ups.slice(0,5).map(x=>`<div class="item"><div><div class="title">${esc(x.title)}</div><div class="sub">${esc(x.sub)}</div></div><div class="value">${money(x.value)}</div></div>`).join(""):`<div class="item">Nenhum compromisso cadastrado.</div>`;
+ renderUpcoming();
 }
+function renderCardsList(){
+ const mode=$("#cardSort")?.value||"debt";
+ const list=[...data.cards].sort((a,b)=>{
+   const av=mode==="limit"?Number(a.limit||0):cardUsed(a.id);
+   const bv=mode==="limit"?Number(b.limit||0):cardUsed(b.id);
+   return bv-av;
+ });
+ $("#cardsList").innerHTML=list.length?list.map(c=>cardHTML(c,true)).join(""):`<div class="item">Nenhum cartão cadastrado.</div>`;
+}
+function dateKey(y,m,d){const last=new Date(y,m,0).getDate();return `${y}-${String(m).padStart(2,"0")}-${String(Math.min(Number(d)||1,last)).padStart(2,"0")}`}
+function addMonthsDate(date,n){const d=new Date(date+"T12:00:00");d.setMonth(d.getMonth()+n);return dateKey(d.getFullYear(),d.getMonth()+1,d.getDate())}
+function installmentDueDate(p,idx){
+ const c=data.cards.find(x=>x.id===p.cardId); if(!c)return addMonthsDate(p.date,idx);
+ const firstKey=cardFirstInstallmentMonth(p); const [y,m]=firstKey.split("-").map(Number); const d=new Date(y,m-1,1); d.setMonth(d.getMonth()+idx); return dateKey(d.getFullYear(),d.getMonth()+1,Number(c.due)||1);
+}
+function commitmentKey(type,id,ref){return `${type}:${id}:${ref}`}
+function isPaidCommit(key){return !!data.paid[key]}
+function toggleCommitPaid(key){
+ const password=prompt("Confirme a alteração com a senha de edição:");
+ if(password!==localStorage.getItem("gp_edit_password")){alert("Senha de edição incorreta.");return false}
+ data.paid[key]=true; save(); render(); return true;
+}
+function upcomingItems(){
+ const today=new Date(); today.setHours(0,0,0,0); const out=[];
+ data.fixed.forEach(f=>{
+   let d=new Date(today.getFullYear(),today.getMonth(),Number(f.day)||1); if(d<today)d.setMonth(d.getMonth()+1);
+   const ref=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; const key=commitmentKey("fixed",f.id,ref);
+   if(isPaidCommit(key)){d.setMonth(d.getMonth()+1);const ref2=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;out.push({key:commitmentKey("fixed",f.id,ref2),title:f.name,sub:`Despesa fixa • ${dateKey(d.getFullYear(),d.getMonth()+1,f.day)}`,value:Number(f.value),date:dateKey(d.getFullYear(),d.getMonth()+1,f.day),paid:false});}
+   else out.push({key,title:f.name,sub:`Despesa fixa • ${dateKey(d.getFullYear(),d.getMonth()+1,f.day)}`,value:Number(f.value),date:dateKey(d.getFullYear(),d.getMonth()+1,f.day),paid:false});
+ });
+ data.purchases.forEach(p=>{
+   if((p.method||"cartao")==="cartao"){
+     const total=Number(p.total||0),inst=Math.max(1,Number(p.installments||1)),first=cardFirstInstallmentMonth(p);
+     for(let i=0;i<inst;i++){
+       const due=installmentDueDate(p,i), key=commitmentKey("purchase",p.id,i+1);
+       if(isPaidCommit(key))continue;
+       const c=data.cards.find(x=>x.id===p.cardId); out.push({key,title:p.name,sub:`${c?c.name:"Cartão removido"} • parcela ${i+1}/${inst} • ${due}`,value:total/inst,date:due,paid:false}); break;
+     }
+   } else {
+     const due=p.date; const key=commitmentKey("purchase",p.id,"cash"); if(!isPaidCommit(key))out.push({key,title:p.name,sub:`${methodLabel(p.method)} • ${due}`,value:Number(p.total||0),date:due,paid:false});
+   }
+ });
+ return out.sort((a,b)=>a.date.localeCompare(b.date));
+}
+function renderUpcoming(){
+ const items=upcomingItems();
+ $("#upcoming").innerHTML=items.length?items.slice(0,10).map(x=>{const due=new Date(x.date+"T00:00:00");const today=new Date();today.setHours(0,0,0,0);const dueNow=due<=today;return `<div class="item upcoming-item ${dueNow?"due-now":""}" onclick="payUpcoming('${x.key}')"><div><div class="title">${esc(x.title)}</div><div class="sub">${esc(x.sub)}</div></div><div class="value ${dueNow?"due-red":""}">${money(x.value)}</div></div>`}).join(""):`<div class="item">Nenhum compromisso cadastrado.</div>`;
+}
+window.payUpcoming=key=>{const item=upcomingItems().find(x=>x.key===key);if(!item)return;const yes=confirm("Pago?\n\nOK = Sim\nCancelar = Não");if(yes){if(toggleCommitPaid(key))render();}};
 function cardHTML(c,actions=false){let used=cardUsed(c.id), available=Number(c.limit)-used;return `<div class="item"><div><div class="title">💳 ${esc(c.name)}</div><div class="sub">Limite ${money(c.limit)} • disponível ${money(available)}</div></div><div class="value">${money(used)}${actions?`<div class="actions"><button onclick="editCard('${c.id}')">Editar</button><button class="del" onclick="delCard('${c.id}')">Excluir</button></div>`:""}</div></div>`}
 function methodLabel(method){return method==="pix"?"PIX":method==="debito"?"Débito":"Cartão"}
 function purchaseHTML(p){
@@ -123,10 +174,13 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&l
 function openModal(title,html){$("#modalTitle").textContent=title;$("#modalBody").innerHTML=html;$("#modal").classList.remove("hidden")}
 $("#closeModal").onclick=()=>$("#modal").classList.add("hidden");
 
+function requireEditPassword(){const p=prompt("Senha de confirmação para alteração:");if(p!==localStorage.getItem("gp_edit_password")){alert("Senha de edição incorreta.");return false}return true}
+function requireClearPassword(){const p=prompt("Senha para apagar todos os dados:");if(p!==localStorage.getItem("gp_clear_password")){alert("Senha de limpeza incorreta.");return false}return true}
+
 $("#addCard").onclick=()=>cardForm();
 function cardForm(c=null){openModal(c?"Editar cartão":"Novo cartão",`<div class="form"><label>Nome do cartão</label><input id="fName" value="${c?esc(c.name):""}" placeholder="Ex.: Nubank"><label>Limite total</label><input id="fLimit" type="number" step="0.01" value="${c?c.limit:""}" placeholder="5000"><label>Dia de fechamento</label><input id="fClose" type="number" min="1" max="31" value="${c?c.close:""}"><label>Dia de vencimento</label><input id="fDue" type="number" min="1" max="31" value="${c?c.due:""}"><button onclick="saveCard('${c?.id||""}')">Salvar</button></div>`)}
-window.saveCard=id=>{let x={id:id||crypto.randomUUID(),name:$("#fName").value.trim(),limit:Number($("#fLimit").value),close:Number($("#fClose").value),due:Number($("#fDue").value)};if(!x.name||!x.limit)return alert("Informe nome e limite.");let i=data.cards.findIndex(c=>c.id===id);i>=0?data.cards[i]=x:data.cards.push(x);save();$("#modal").classList.add("hidden");render()};
-window.editCard=id=>cardForm(data.cards.find(c=>c.id===id));window.delCard=id=>{if(confirm("Excluir este cartão?")){data.cards=data.cards.filter(c=>c.id!==id);save();render()}};
+window.saveCard=id=>{if(!requireEditPassword())return;let x={id:id||crypto.randomUUID(),name:$("#fName").value.trim(),limit:Number($("#fLimit").value),close:Number($("#fClose").value),due:Number($("#fDue").value)};if(!x.name||!x.limit)return alert("Informe nome e limite.");let i=data.cards.findIndex(c=>c.id===id);i>=0?data.cards[i]=x:data.cards.push(x);save();$("#modal").classList.add("hidden");render()};
+window.editCard=id=>cardForm(data.cards.find(c=>c.id===id));window.delCard=id=>{if(confirm("Excluir este cartão?")&&requireEditPassword()){data.cards=data.cards.filter(c=>c.id!==id);save();render()}};
 
 $("#addPurchase").onclick=()=>purchaseForm();
 function purchaseForm(p=null){
@@ -167,6 +221,7 @@ function purchaseForm(p=null){
  updatePaymentFields();
 } 
 window.savePurchase=id=>{
+ if(!requireEditPassword())return;
  let method=$("#pMethod").value;
  let isCard=method==="cartao";
  if(isCard&&!data.cards.length)return alert("Cadastre um cartão primeiro.");
@@ -177,11 +232,11 @@ window.savePurchase=id=>{
  save();$("#modal").classList.add("hidden");render();
 };
 window.editPurchase=id=>purchaseForm(data.purchases.find(p=>p.id===id));
-window.delPurchase=id=>{if(confirm("Excluir esta compra?")){data.purchases=data.purchases.filter(p=>p.id!==id);save();render()}};
+window.delPurchase=id=>{if(confirm("Excluir esta compra?")&&requireEditPassword()){data.purchases=data.purchases.filter(p=>p.id!==id);save();render()}};
 $("#addFixed").onclick=()=>fixedForm();
 function fixedForm(f=null){openModal(f?"Editar despesa fixa":"Nova despesa fixa",`<div class="form"><label>Nome</label><input id="xName" value="${f?esc(f.name):""}" placeholder="Ex.: Internet"><label>Valor mensal</label><input id="xValue" type="number" step="0.01" value="${f?f.value:""}"><label>Dia do vencimento</label><input id="xDay" type="number" min="1" max="31" value="${f?f.day:""}"><button onclick="saveFixed('${f?.id||""}')">Salvar</button></div>`)}
-window.saveFixed=id=>{let x={id:id||crypto.randomUUID(),name:$("#xName").value.trim(),value:Number($("#xValue").value),day:Number($("#xDay").value)};if(!x.name||!x.value)return alert("Informe nome e valor.");let i=data.fixed.findIndex(f=>f.id===id);i>=0?data.fixed[i]=x:data.fixed.push(x);save();$("#modal").classList.add("hidden");render()};
-window.editFixed=id=>fixedForm(data.fixed.find(f=>f.id===id));window.delFixed=id=>{if(confirm("Excluir esta despesa?")){data.fixed=data.fixed.filter(f=>f.id!==id);save();render()}};
+window.saveFixed=id=>{if(!requireEditPassword())return;let x={id:id||crypto.randomUUID(),name:$("#xName").value.trim(),value:Number($("#xValue").value),day:Number($("#xDay").value)};if(!x.name||!x.value)return alert("Informe nome e valor.");let i=data.fixed.findIndex(f=>f.id===id);i>=0?data.fixed[i]=x:data.fixed.push(x);save();$("#modal").classList.add("hidden");render()};
+window.editFixed=id=>fixedForm(data.fixed.find(f=>f.id===id));window.delFixed=id=>{if(confirm("Excluir esta despesa?")&&requireEditPassword()){data.fixed=data.fixed.filter(f=>f.id!==id);save();render()}};
 
 function unlock(){localStorage.setItem("gp_unlocked","1");$("#lock").classList.add("hidden");$("#setup").classList.add("hidden");$("#app").classList.remove("hidden");render()}
 const storedPin=localStorage.getItem("gp_pin");
@@ -218,6 +273,7 @@ function openValueSettings(){
  </div>`);
 }
 window.saveSalary=()=>{
+ if(!requireEditPassword())return;
  const v=parseMoneyInput($("#salaryValue").value);
  if(!Number.isFinite(v)||v<0)return alert("Informe um salário válido.");
  data.salary=v;
@@ -256,6 +312,7 @@ function openExtraForm(x=null){
  method.onchange=update;update();
 }
 window.saveExtra=id=>{
+ if(!requireEditPassword())return;
  const method=$("#eMethod").value;
  const x={id:id||crypto.randomUUID(),source:$("#eSource").value.trim(),date:$("#eDate").value,method,value:parseMoneyInput($("#eValue").value),installments:method==="credito"?Number($("#eInst").value||1):1};
  if(!x.source||!x.date||!Number.isFinite(x.value)||x.value<=0)return alert("Preencha fonte, data e valor.");
@@ -264,7 +321,7 @@ window.saveExtra=id=>{
  save();$("#modal").classList.add("hidden");render();
 };
 window.editExtra=id=>openExtraForm(data.extras.find(x=>x.id===id));
-window.delExtra=id=>{if(confirm("Excluir este extra?")){data.extras=data.extras.filter(x=>x.id!==id);save();render();openExtrasHistory()}};
+window.delExtra=id=>{if(confirm("Excluir este extra?")&&requireEditPassword()){data.extras=data.extras.filter(x=>x.id!==id);save();render();openExtrasHistory()}};
 window.openExtrasHistory=function openExtrasHistory(){
  const list=data.extras.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
  openModal("Histórico dos extras",`<div class="extra-history">
@@ -288,6 +345,10 @@ $("#fontSize").onclick=()=>{
  prefs.fontSize=next;localStorage.setItem("gp_prefs",JSON.stringify(prefs));applyPreferences();
 };
 
-$("#changePin").onclick=()=>{let p=prompt("Novo PIN (4 a 6 números):");if(p&&/^\d{4,6}$/.test(p)){localStorage.setItem("gp_pin",p);alert("PIN alterado.")}else if(p)alert("PIN inválido.")};
-$("#clearData").onclick=()=>{if(confirm("Apagar cartões, compras, despesas e receitas?")){data={income:0,currentAmount:0,salary:0,cards:[],purchases:[],fixed:[],extras:[]};save();render()}};
+$("#changePin").onclick=()=>{const old=prompt("PIN atual:");if(old!==localStorage.getItem("gp_pin")){alert("PIN atual incorreto.");return}const p=prompt("Novo PIN (4 a 6 números):");const p2=prompt("Confirme o novo PIN:");if(!p||!/^\d{4,6}$/.test(p)||p!==p2){alert("PIN inválido ou confirmação diferente.");return}localStorage.setItem("gp_pin",p);alert("PIN alterado.")};
+$("#changePasswords").onclick=()=>openPasswordSettings();
+function openPasswordSettings(){openModal("Alterar senhas",`<div class="form"><p class="muted">Escolha qual senha deseja alterar. A confirmação da troca será feita pelo PIN.</p><label>Senha</label><select id="passwordTarget"><option value="edit">Edição (alterar dados)</option><option value="clear">Limpeza (apagar todos os dados)</option></select><label>Senha atual</label><input id="oldTargetPass" type="password"><label>Nova senha</label><input id="newTargetPass" type="password"><label>Confirmar nova senha</label><input id="newTargetPass2" type="password"><button onclick="savePasswords()">Salvar alteração</button></div>`)}
+window.savePasswords=()=>{if(prompt("Informe o PIN para confirmar a troca da senha:")!==localStorage.getItem("gp_pin")){alert("PIN incorreto.");return}const target=$("#passwordTarget").value,old=$("#oldTargetPass").value,n=$("#newTargetPass").value,n2=$("#newTargetPass2").value;const key=target==="edit"?"gp_edit_password":"gp_clear_password";if(old!==localStorage.getItem(key)){alert("Senha atual incorreta.");return}if(!n||n!==n2){alert("A nova senha e a confirmação não conferem.");return}localStorage.setItem(key,n);$("#modal").classList.add("hidden");alert("Senha alterada com sucesso.")};
+$("#clearData").onclick=()=>{if(!confirm("Apagar todos os dados?"))return;if(!requireClearPassword())return;data={income:0,currentAmount:0,salary:0,cards:[],purchases:[],fixed:[],extras:[],paid:{}};save();render()};
+$("#cardSort").onchange=renderCardsList;
 if(localStorage.getItem("gp_unlocked")==="1")unlock();
