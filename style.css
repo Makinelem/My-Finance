@@ -49,3 +49,15 @@ main{padding:11px;max-width:600px}.balance-card{padding:14px;border-radius:16px}
 .modal-box{padding:16px 13px 21px;max-height:90vh}.modal-box h2{margin:0 30px 13px;font-size:17px}.form{gap:7px}.form label{font-size:9px}.form input,.form select{padding:9px;border-radius:9px}.form button{padding:10px;border-radius:9px}.actions{gap:6px;margin-top:7px}.actions button{padding:7px;border-radius:7px}
 .lock-card{padding:22px 16px;border-radius:17px}.lock-card h1{font-size:20px}.lock-card p{margin:4px 0 16px}.lock-card input{padding:11px;border-radius:9px}.primary{margin-top:7px;padding:11px;border-radius:9px}
 .logo-img{display:block;width:min(180px,70%);max-height:100px;object-fit:contain;margin:0 auto 12px}
+
+
+.logo-img {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.lock-card {
+  background: #fff; /* no tema claro */
+}
+body.theme-dark .lock-card {
+  background: #172333;
+}
