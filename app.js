@@ -26,8 +26,14 @@ function showPage(id){
 }
 document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>showPage(b.dataset.page));
 
+// Saldo utilizado considera somente parcelas ainda não pagas.
 function cardUsed(cardId){
- return data.purchases.filter(p=>p.cardId===cardId).reduce((s,p)=>s+Number(p.total||0),0);
+ return data.purchases.filter(p=>p.cardId===cardId).reduce((sum,p)=>{
+   const total=Number(p.total||0), installments=Math.max(1,Number(p.installments||1));
+   let paid=0;
+   for(let i=1;i<=installments;i++) if(data.paid[commitmentKey("purchase",p.id,i)]) paid+=total/installments;
+   return sum+Math.max(0,total-paid);
+ },0);
 }
 function monthKeyFromDate(value){
  const d=value instanceof Date?new Date(value):new Date(String(value||"")+"T12:00:00");
@@ -58,7 +64,10 @@ function cardInstallmentsForMonth(targetMonth){
    const total=Number(p.total||0), inst=Math.max(1,Number(p.installments||1));
    const first=cardFirstInstallmentMonth(p);
    const diff=monthIndex(targetMonth)-monthIndex(first);
-   if(diff>=0&&diff<inst)return sum+(total/inst);
+   if(diff>=0&&diff<inst){
+     const installmentNo=diff+1;
+     if(!isPaidCommit(commitmentKey("purchase",p.id,installmentNo))) return sum+(total/inst);
+   }
    return sum;
  },0);
 }
@@ -204,14 +213,7 @@ function purchaseForm(p=null){
  <label>Valor total</label><input id="pTotal" type="number" step="0.01" value="${p?p.total:""}">
  <div id="installmentFields" class="${method==="cartao"?"":"hidden"}">
    <label>Pagamento</label>
-   <select id="pInst">
-    <option value="1" ${p?.installments==1?"selected":""}>À vista</option><option value="2" ${p?.installments==2?"selected":""}>2 parcelas</option>
-    <option value="3" ${p?.installments==3?"selected":""}>3 parcelas</option><option value="4" ${p?.installments==4?"selected":""}>4 parcelas</option>
-    <option value="5" ${p?.installments==5?"selected":""}>5 parcelas</option><option value="6" ${p?.installments==6?"selected":""}>6 parcelas</option>
-    <option value="8" ${p?.installments==8?"selected":""}>8 parcelas</option><option value="10" ${p?.installments==10?"selected":""}>10 parcelas</option>
-    <option value="12" ${p?.installments==12?"selected":""}>12 parcelas</option><option value="18" ${p?.installments==18?"selected":""}>18 parcelas</option>
-    <option value="24" ${p?.installments==24?"selected":""}>24 parcelas</option>
-   </select>
+   <input id="pInst" type="number" min="1" max="360" step="1" value="${p?.installments||1}" placeholder="Número de parcelas">
  </div>
  <button onclick="savePurchase('${p?.id||""}')">Salvar</button></div>`);
  const methodSelect=$("#pMethod");
@@ -230,6 +232,7 @@ window.savePurchase=id=>{
  if(isCard&&!data.cards.length)return alert("Cadastre um cartão primeiro.");
  let x={id:id||crypto.randomUUID(),name:$("#pName").value.trim(),method,cardId:isCard?$("#pCard").value:null,date:$("#pDate").value,total:Number($("#pTotal").value),installments:isCard?Number($("#pInst").value):1};
  if(!x.name||!x.total)return alert("Informe descrição e valor.");
+ if(isCard&&(!Number.isInteger(x.installments)||x.installments<1||x.installments>360))return alert("Informe um número de parcelas entre 1 e 360.");
  let i=data.purchases.findIndex(p=>p.id===id);
  i>=0?data.purchases[i]=x:data.purchases.push(x);
  save();$("#modal").classList.add("hidden");render();
