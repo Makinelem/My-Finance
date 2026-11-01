@@ -51,13 +51,3 @@ main{padding:11px;max-width:600px}.balance-card{padding:14px;border-radius:16px}
 .logo-img{display:block;width:min(180px,70%);max-height:100px;object-fit:contain;margin:0 auto 12px}
 
 
-.logo-img {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-.lock-card {
-  background: #fff; /* no tema claro */
-}
-body.theme-dark .lock-card {
-  background: #172333;
-}
